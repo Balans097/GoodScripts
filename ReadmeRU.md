@@ -35,15 +35,18 @@ GNOME придерживается философии минимализма: ч
    ```bash
    git clone https://github.com/Balans097/GoodScripts.git
    cd GoodScripts
+
    
 
 2. **Скопируйте сценарии в директорию Nautilus:**
    ```bash
    mkdir -p ~/.local/share/nautilus/scripts
    cp *.sh ~/.local/share/nautilus/scripts/
-   
-   
-   
+  
+
+3. **Сделайте сценарии исполняемыми:**
+   ```bash
+   chmod +x ~/.local/share/nautilus/scripts/*.sh
    
    
    
