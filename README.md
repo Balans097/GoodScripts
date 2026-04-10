@@ -52,8 +52,7 @@ Some examples
    nautilus -q
    ```
 
-> 💡 **Note for GNOME 43+ Users:**  
-> If the `Scripts` submenu doesn't appear in the context menu, install the [Nautilus Scripts Manager](https://extensions.gnome.org/extension/5434/nautilus-scripts-manager/) extension, or ensure your file manager settings allow custom scripts to be displayed.
+
 
 ## 📦 Dependencies
 
