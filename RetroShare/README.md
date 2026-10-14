@@ -1,102 +1,102 @@
 # MakeRetroShareRPM.sh
 
-Собирает RPM-пакет [RetroShare](https://retroshare.cc) для Fedora (Qt6, OpenSSL 3.x) из git-исходников. Результат: пакет, который ставится через `dnf`, регистрируется в системе (ярлык, иконки) и запускается командой `retroshare`.
+Builds an RPM package of [RetroShare](https://retroshare.cc) for Fedora (Qt6, OpenSSL 3.x) from git sources. The result is a package that installs with `dnf`, registers itself in the system (desktop entry, icons) and starts with the `retroshare` command.
 
-## Быстрый старт
+## Quick start
 
 ```bash
 ./MakeRetroShareRPM.sh                    # master
-RS_REF=v0.6.7.3 ./MakeRetroShareRPM.sh    # тег, ветка или хеш коммита
+RS_REF=v0.6.7.3 ./MakeRetroShareRPM.sh    # tag, branch or commit hash
 sudo dnf install _rpmbuild/RPMS/x86_64/retroshare-*.rpm
 retroshare
 ```
 
-Нужны Fedora, `sudo` и доступ к GitHub. Скрипт сам ставит `rpm-build`, `git`, `tar`, `gzip`, а затем все BuildRequires командой `dnf builddep` по сгенерированному spec.
+Requirements: Fedora, `sudo` and access to GitHub. The script installs `rpm-build`, `git`, `tar` and `gzip` itself, then installs all BuildRequires with `dnf builddep` using the generated spec.
 
-## Что делает скрипт
+## What the script does
 
-1. **Инструменты.** Устанавливает то, что нужно самому скрипту.
-2. **Исходники.** Клонирует репозиторий, переключается на `RS_REF`, разворачивает submodules и упаковывает всё в `Source0` (tar.gz). Архив собирается вручную: в архивах GitHub нет submodules, а без них RetroShare не собирается. Архив детерминирован: порядок файлов, владелец, mtime и заголовок gzip зафиксированы.
-3. **Вспомогательные файлы.** Создаёт обёртку запуска, конфиг OpenSSL и `.desktop`-файл (Source1–Source3).
-4. **Spec.** Генерирует `retroshare.spec` из шаблона и ставит BuildRequires.
-5. **Сборка.** `rpmbuild -ba`; лог в `_logs/rpmbuild.log`. Число потоков выбирается по свободной памяти (LTO требует около 2 ГБ на процесс компилятора).
-6. **Проверка.** Убеждается, что в пакете есть обёртка, бинарник, конфиг, ярлык и иконка; запускает `rpmlint`, если он установлен.
+1. **Tools.** Installs what the script itself needs.
+2. **Sources.** Clones the repository, checks out `RS_REF`, fetches submodules and packs everything into `Source0` (tar.gz). The archive is built by hand: GitHub archives do not contain submodules, and RetroShare does not build without them. The archive is deterministic: file order, owner, mtime and the gzip header are fixed.
+3. **Helper files.** Creates the launcher wrapper, the OpenSSL config and the `.desktop` file (Source1–Source3).
+4. **Spec.** Generates `retroshare.spec` from a template and installs BuildRequires.
+5. **Build.** `rpmbuild -ba`; the log goes to `_logs/rpmbuild.log`. The number of jobs is chosen from available memory (LTO needs about 2 GB per compiler process).
+6. **Verification.** Checks that the package contains the wrapper, the binary, the config, the desktop entry and an icon; runs `rpmlint` if it is installed.
 
-### Версия пакета
+### Package version
 
-- Сборка из тега: `Version` = тег, `Release` = `1`.
-- Сборка из ветки или коммита: `Version` = ближайший тег, `Release` = `1.<дата>git<хеш>` (post-release snapshot по Fedora Packaging Guidelines).
+- Build from a tag: `Version` = tag, `Release` = `1`.
+- Build from a branch or commit: `Version` = nearest tag, `Release` = `1.<date>git<hash>` (post-release snapshot per the Fedora Packaging Guidelines).
 
-### Что получается
+### Resulting packages
 
-| Пакет | Назначение |
+| Package | Purpose |
 |---|---|
-| `retroshare` | Основной. Только он нужен для работы |
-| `retroshare-debuginfo`, `retroshare-debugsource` | Символы и исходники для gdb, ABRT, coredumpctl. Создаются автоматически; `RS_NODEBUG=1` отключает |
-| `retroshare-*.src.rpm` | SRPM в `_rpmbuild/SRPMS/` |
+| `retroshare` | Main package. The only one needed to run the application |
+| `retroshare-debuginfo`, `retroshare-debugsource` | Symbols and sources for gdb, ABRT, coredumpctl. Created automatically; `RS_NODEBUG=1` disables them |
+| `retroshare-*.src.rpm` | SRPM in `_rpmbuild/SRPMS/` |
 
-Исходники RetroShare не патчатся. Единственная правка в `%prep` — замена заглушки `[version not available]` в `.pro`/`.pri` на хеш коммита: в tarball нет `.git`, а заглушка содержит пробелы и недопустима в значении `-D…`.
+RetroShare sources are not patched. The only change in `%prep` replaces the `[version not available]` placeholder in `.pro`/`.pri` files with the commit hash: the tarball has no `.git`, and the placeholder contains spaces, so it is not valid as a `-D…` value.
 
-### Переменные окружения
+### Environment variables
 
-| Переменная | Значение |
+| Variable | Meaning |
 |---|---|
-| `RS_REF` | ветка, тег или хеш коммита (по умолчанию `master`) |
-| `RS_VERSION` | принудительная `Version` |
-| `RS_WORKDIR` | рабочий каталог (по умолчанию каталог скрипта) |
-| `RS_JOBS` | число потоков сборки |
-| `RS_NODEBUG=1` | не создавать debuginfo/debugsource |
-| `SKIP_DEPS=1` | не вызывать `dnf` |
-| `FORCE_RECLONE=1` | удалить и заново склонировать исходники |
-| `RPM_CHANGELOG_WHO` | `Имя <email>` для `%changelog` |
+| `RS_REF` | branch, tag or commit hash (default `master`) |
+| `RS_VERSION` | force `Version` |
+| `RS_WORKDIR` | working directory (default: the script's directory) |
+| `RS_JOBS` | number of build jobs |
+| `RS_NODEBUG=1` | do not create debuginfo/debugsource |
+| `SKIP_DEPS=1` | do not call `dnf` |
+| `FORCE_RECLONE=1` | delete and re-clone the sources |
+| `RPM_CHANGELOG_WHO` | `Name <email>` for `%changelog` |
 
-## Почему бинарник запускается через обёртку
+## Why the binary is started through a wrapper
 
-RetroShare использует SHA-1 в сертификатах и подписях, в том числе в уже существующих у пользователей. В Fedora с OpenSSL 3 это не работает «из коробки»:
+RetroShare uses SHA-1 in certificates and signatures, including those that users already have. On Fedora with OpenSSL 3 this does not work out of the box:
 
-- OpenSSL 3 отвергает SHA-1 уже на уровне безопасности `SECLEVEL=1`, а политика Fedora по умолчанию строже;
-- Fedora дополнительно ограничивает SHA-1 подписи через `crypto-policies`.
+- OpenSSL 3 rejects SHA-1 already at security level `SECLEVEL=1`, and Fedora's default policy is stricter still;
+- Fedora additionally restricts SHA-1 signatures through `crypto-policies`.
 
-Снизить требования для всей системы (`update-crypto-policies --set LEGACY`) нельзя без ослабления остальных программ. Править код RetroShare тоже не нужно: он совместим с API OpenSSL 1.1+/3. Поэтому настройка делается **окружением одного процесса**.
+Relaxing the requirements system-wide (`update-crypto-policies --set LEGACY`) would weaken every other program. Patching RetroShare is not needed either: its code is compatible with the OpenSSL 1.1+/3 API. So the setup is done **through the environment of a single process**.
 
-### Раскладка
+### Layout
 
 ```
-/usr/bin/retroshare                 обёртка (sh-скрипт)
-/usr/bin/retroshare-service         симлинк на обёртку (если собран)
-/usr/libexec/retroshare/retroshare  настоящий бинарник
-/etc/retroshare/openssl-rs.cnf      конфиг OpenSSL для RetroShare
+/usr/bin/retroshare                 wrapper (sh script)
+/usr/bin/retroshare-service         symlink to the wrapper (if built)
+/usr/libexec/retroshare/retroshare  the real binary
+/etc/retroshare/openssl-rs.cnf      OpenSSL config for RetroShare
 ```
 
-Обёртка выбирает бинарник по собственному имени (`${0##*/}`), поэтому один скрипт обслуживает и `retroshare`, и `retroshare-service`. Бинарник лежит в `libexec`, потому что `/usr/bin` занят обёрткой; сборка проверяет, что upstream не положил туда свой файл.
+The wrapper picks the binary by its own name (`${0##*/}`), so one script serves both `retroshare` and `retroshare-service`. The binary lives in `libexec` because `/usr/bin` is taken by the wrapper; the build verifies that upstream did not install its own file there.
 
-### Что задаёт обёртка
+### What the wrapper sets
 
-| Переменная | Эффект |
+| Variable | Effect |
 |---|---|
-| `OPENSSL_ENABLE_SHA1_SIGNATURES=1` | Даунстрим-переменная OpenSSL в Fedora/RHEL (в upstream OpenSSL её нет): разрешает SHA-1 подписи |
-| `OPENSSL_CONF=/etc/retroshare/openssl-rs.cnf` | `SECLEVEL=0`, `MinProtocol=TLSv1.2`, провайдер `default` |
+| `OPENSSL_ENABLE_SHA1_SIGNATURES=1` | Downstream OpenSSL variable in Fedora/RHEL (upstream OpenSSL does not have it): allows SHA-1 signatures |
+| `OPENSSL_CONF=/etc/retroshare/openssl-rs.cnf` | `SECLEVEL=0`, `MinProtocol=TLSv1.2`, the `default` provider |
 
-Уже заданные пользователем значения обёртка не перезаписывает.
+Values already set by the user are not overwritten.
 
-### Ограничения
+### Limitations
 
-- Для процесса RetroShare `openssl-rs.cnf` **полностью заменяет** системный `openssl.cnf`, включая crypto-policies. Остальные программы не затронуты.
-- Переменные окружения наследуют процессы, запущенные из RetroShare.
-- Конфиг помечен `%config(noreplace)`: локальные правки сохраняются при обновлении пакета.
-- Запуск напрямую (`/usr/libexec/retroshare/retroshare`) обходит настройку, и SHA-1 снова будет отвергаться.
+- For the RetroShare process, `openssl-rs.cnf` **fully replaces** the system `openssl.cnf`, including crypto-policies. Other programs are not affected.
+- Environment variables are inherited by processes launched from RetroShare.
+- The config is marked `%config(noreplace)`: local edits survive package updates.
+- Running the binary directly (`/usr/libexec/retroshare/retroshare`) bypasses the setup, and SHA-1 will be rejected again.
 
-## Ярлык и иконки
+## Desktop entry and icons
 
-Ярлык ставит spec, а не `make install`: upstream-файл не проходит `desktop-file-validate` (устаревший ключ `Encoding`, иконка с расширением, абсолютный путь в `Exec`, `Categories` без завершающей `;`). Собственный файл устанавливается через `desktop-file-install`, который его проверяет и при ошибке прерывает сборку. Растровые иконки hicolor ставит upstream, SVG — spec. Окно RetroShare имеет `app_id` `retroshare`, совпадающий с именем `.desktop`, поэтому GNOME связывает окно с ярлыком без `StartupWMClass`.
+The desktop entry is installed by the spec, not by `make install`: the upstream file does not pass `desktop-file-validate` (obsolete `Encoding` key, icon name with an extension, absolute path in `Exec`, `Categories` without a trailing `;`). The package's own file is installed with `desktop-file-install`, which validates it and aborts the build on error. Raster hicolor icons are installed by upstream, the SVG by the spec. The RetroShare window has `app_id` `retroshare`, matching the `.desktop` file name, so GNOME associates the window with the entry without `StartupWMClass`.
 
-## Известные ограничения сборки
+## Known build limitations
 
-- Выражение `License` в spec составлено вручную и сканером не проверялось; перед публикацией пакета сверьте его (например, `licensecheck -r`).
-- Библиотеки librnp, restbed, libsam3 и udp-discovery-cpp линкуются статически из `supportlibs` (отражено в `Provides: bundled(...)`).
-- Флаг `-Wno-template-body` отключает диагностику GCC 16 для встроенного rapidjson в плагинах; исходники не меняются.
+- The `License` expression in the spec was composed by hand and has not been checked with a scanner; verify it (for example with `licensecheck -r`) before publishing the package.
+- librnp, restbed, libsam3 and udp-discovery-cpp are linked statically from `supportlibs` (reflected in `Provides: bundled(...)`).
+- The `-Wno-template-body` flag disables a GCC 16 diagnostic for the bundled rapidjson in plugins; the sources are not modified.
 
-## Удаление
+## Removal
 
 ```bash
 sudo dnf remove retroshare retroshare-debuginfo retroshare-debugsource
